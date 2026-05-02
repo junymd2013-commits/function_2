@@ -125,30 +125,26 @@ def generate_quadratic_problem(a_type="int"):
     f_vertex = a * (x - p)**2 + q
     f = sp.expand(f_vertex)
 
-    # 誤答の a を作る
-    wrong_as = []
-    for cand in [a * 2, a / 2, -a, a + 1, a - 1]:
-        if cand != a and cand not in wrong_as:
-            wrong_as.append(cand)
-        if len(wrong_as) == 4:
-            break
+# 誤答の a を作る（小数禁止）
+wrong_as = []
 
-    wrong_fs = [sp.expand(A * (x - p)**2 + q) for A in wrong_as]
+candidates = [
+    a * 2,
+    a / 2,
+    -a,
+    a + sp.Rational(1, 1),
+    a - sp.Rational(1, 1)
+]
 
-    options = [f] + wrong_fs
-    random.shuffle(options)
-    correct_idx = options.index(f)
+for cand in candidates:
+    if cand != a and cand not in wrong_as:
+        wrong_as.append(cand)
+    if len(wrong_as) == 4:
+        break
 
-    return {
-        "p": p,
-        "q": q,
-        "x1": x1,
-        "y1": y1,
-        "options": options,
-        "correct_idx": correct_idx,
-        "f": f,
-        "a": a
-    }
+# 誤答の一般形
+wrong_fs = [sp.expand(A * (x - p)**2 + q) for A in wrong_as]
+
 
 # ============================================================
 # 5 題セット生成（難易度順）
