@@ -3,6 +3,7 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 from fractions import Fraction
+import time
 
 st.set_page_config(page_title="2点から直線を求める問題", layout="wide")
 
@@ -90,7 +91,7 @@ if "total_count" not in st.session_state:
 
 # 最初の問題開始時刻を記録
 if st.session_state.start_time is None:
-    st.session_state.start_time = st.time()
+    st.session_state.start_time = time.time()
 
 p1, p2, m, b, correct, choices = st.session_state.problem
 
@@ -152,7 +153,7 @@ if st.button("次の問題へ"):
 # -------------------------
 if st.button("終了する"):
 
-    end_time = st.time()
+    end_time = time.time()
     elapsed = end_time - st.session_state.start_time
 
     minutes = int(elapsed // 60)
