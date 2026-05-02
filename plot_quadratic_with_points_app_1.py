@@ -104,6 +104,8 @@ y = {sp.latex(a)}\\left(x - ({sp.latex(p)})\\right)^2 + {sp.latex(q)}
 # ============================================================
 # 2次関数の生成：頂点 (p, q) と 1 点 (x1, y1)
 # ============================================================
+
+
 def generate_quadratic_problem(a_type="int"):
     p = random.randint(-5, 5)
     q = random.randint(-5, 5)
@@ -125,25 +127,44 @@ def generate_quadratic_problem(a_type="int"):
     f_vertex = a * (x - p)**2 + q
     f = sp.expand(f_vertex)
 
-# 誤答の a を作る（小数禁止）
-wrong_as = []
+    # --------------------------------------------------------
+    # 誤答の a を作る（小数禁止）★ここが関数内に必要
+    # --------------------------------------------------------
+    wrong_as = []
 
-candidates = [
-    a * 2,
-    a / 2,
-    -a,
-    a + sp.Rational(1, 1),
-    a - sp.Rational(1, 1)
-]
+    candidates = [
+        a * 2,
+        a / 2,
+        -a,
+        a + sp.Rational(1, 1),
+        a - sp.Rational(1, 1)
+    ]
 
-for cand in candidates:
-    if cand != a and cand not in wrong_as:
-        wrong_as.append(cand)
-    if len(wrong_as) == 4:
-        break
+    for cand in candidates:
+        if cand != a and cand not in wrong_as:
+            wrong_as.append(cand)
+        if len(wrong_as) == 4:
+            break
 
-# 誤答の一般形
-wrong_fs = [sp.expand(A * (x - p)**2 + q) for A in wrong_as]
+    # 誤答の一般形
+    wrong_fs = [sp.expand(A * (x - p)**2 + q) for A in wrong_as]
+
+    # 選択肢
+    options = [f] + wrong_fs
+    random.shuffle(options)
+    correct_idx = options.index(f)
+
+    return {
+        "p": p,
+        "q": q,
+        "x1": x1,
+        "y1": y1,
+        "options": options,
+        "correct_idx": correct_idx,
+        "f": f,
+        "a": a
+    }
+
 
 
 # ============================================================
