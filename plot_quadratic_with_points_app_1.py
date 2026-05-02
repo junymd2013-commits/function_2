@@ -3,6 +3,12 @@ import random
 import sympy as sp
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib
+
+# 教科書風フォント（明朝体）
+matplotlib.rcParams['font.family'] = 'IPAexMincho'
+
+
 
 st.set_page_config(page_title="2次関数（頂点と1点）5択トレーニング", layout="centered")
 x = sp.Symbol("x")
@@ -21,7 +27,6 @@ def plot_quadratic_with_points(f, p, q, x1, y1):
     ax.plot(xs, ys, label="y = f(x)", color="blue")
     ax.scatter([p], [q], color="red", s=80, label="頂点 (p, q)")
     ax.scatter([x1], [y1], color="green", s=80, label="通る点 (x1, y1)")
-
     ax.axvline(p, color="purple", linestyle="--", linewidth=2, label="軸 x = p")
 
     ax.axhline(0, color="black", linewidth=0.8)
