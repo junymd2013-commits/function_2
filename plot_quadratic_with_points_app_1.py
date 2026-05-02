@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 
+matplotlib.rcParams["font.family"] = "Meiryo"
+matplotlib.rcParams["axes.unicode_minus"] = False
+
 # 日本語フォントを優先（環境にあるものが使われる）
 matplotlib.rcParams["font.family"] = [
     "Yu Mincho",      # Windows 10 以降によく入っている
@@ -56,54 +59,52 @@ def explain_vertex_form(f):
     b = expanded.coeff(x, 1)
     c = expanded.coeff(x, 0)
 
+    # 頂点 p, q
     p = -b / (2*a)
     q = c - b**2/(4*a)
 
+    # 教科書風の平方完成
+    # 1) a をくくる
+    step1 = rf"y = {sp.latex(a)}\left(x^2 {sp.latex(b/a)}x\right) + {sp.latex(c)}"
+
+    # 2) 平方完成
+    half = b/(2*a)
+    step2 = rf"x^2 {sp.latex(b/a)}x = \left(x {sp.latex(half)}\right)^2 - {sp.latex(half**2)}"
+
+    # 3) 頂点形式
+    step3 = rf"y = {sp.latex(a)}\left(x - ({sp.latex(p)})\right)^2 + {sp.latex(q)}"
+
     explanation = f"""
-### 一般形 → 基本形（頂点形式）への変形
+### 一般形 → 基本形（平方完成）
 
-与えられた一般形  
+#### ① a をくくり出す
 \
 
 \[
-y = {sp.latex(a)}x^2 + {sp.latex(b)}x + {sp.latex(c)}
+{step1}
 \\]
 
 
 
----
-
-#### ① a をくくり出す  
+#### ② 平方完成する
 \
 
 \[
-y = {sp.latex(a)}\\left(x^2 + {sp.latex(b/a)}x\\right) + {sp.latex(c)}
+{step2}
 \\]
 
 
 
-#### ② 平方完成する  
+#### ③ 頂点形式にまとめる
 \
 
 \[
-x^2 + {sp.latex(b/a)}x
-= \\left(x + {sp.latex(b/(2*a))}\\right)^2 - {sp.latex((b/(2*a))**2)}
+{step3}
 \\]
 
 
 
-#### ③ 頂点形式にまとめる  
-\
-
-\[
-y = {sp.latex(a)}\\left(x - ({sp.latex(p)})\\right)^2 + {sp.latex(q)}
-\\]
-
-
-
----
-
-#### よって頂点は  
+#### よって頂点は
 \
 
 \[
@@ -113,6 +114,7 @@ y = {sp.latex(a)}\\left(x - ({sp.latex(p)})\\right)^2 + {sp.latex(q)}
 
 """
     return explanation
+
 
 # ============================================================
 # 2次関数の生成：頂点 (p, q) と 1 点 (x1, y1)
