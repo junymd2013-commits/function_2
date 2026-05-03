@@ -1,0 +1,227 @@
+import streamlit as st
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from fractions import Fraction
+import time
+import matplotlib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+
+# 日本語フォント設定（文字化け防止）
+matplotlib.rcParams['font.family'] = 'IPAexGothic'
+
+st.set_page_config(page_title="4本の直線から選ぶ問題", layout="wide")
+
+st.title("📐 一次関数の式に対応する直線を選びなさい")
+
+# -------------------------
+# Google Sheets 認証
+# -------------------------
+scope = ["https://www.googleapis.com/auth/spreadsheets"]
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+    st.secrets["gcp_service_account"], scope
+)
+gc = gspread.authorize(credentials)
+
+# スプレッドシートを開く（一次関数_履歴 シート）
+sheet = gc.open_by_key(st.secrets["sheets"]["sheet_id"]).worksheet("一次関数_履歴")
+
+# -------------------------
+# 傾き候補（整数 + 指定分数）
+# -------------------------
+slope_candidates = [
+    1, 2, 3, -1, -2, -3,
+    Fraction(1,2), Fraction(2,3), Fraction(1,3), Fraction(3,4), Fraction(1,4),
+    Fraction(-1,2), Fraction(-1,3), Fraction(-2,3), Fraction(-3,4), Fraction(-1,4)
+]
+
+# -------------------------
+# 分数を LaTeX 文字列に変換
+# -------------------------
+def frac_to_str(fr):
+    if isinstance(fr, int):
+        return str(fr)
+    return f"\\frac{{{fr.numerator}}}{{{fr.denominator}}}"
+
+# -------------------------
+# 一次関数を LaTeX 文字列に変換（縦分数 × x）
+# -------------------------
+def line_to_str(m, b):
+    if m == 1:
+        m_str = "x"
+    elif m == -1:
+        m_str = "-x"
+    else:
+        m_str = f"{frac_to_str(m)}x"
+
+    if b == 0:
+        return f"$y = {m_str}$"
+    elif b > 0:
+        return f"$y = {m_str} + {frac_to_str(b)}$"
+    else:
+        return f"$y = {m_str} - {frac_to_str(-b)}$"
+
+# -------------------------
+# ランダムな一次関数を生成
+# -------------------------
+def generate_line():
+    m = random.choice(slope_candidates)
+    b = random.randint(-5, 5)
+    return m, b
+
+# -------------------------
+# 問題生成（正解1本 + 誤答3本）
+# -------------------------
+def generate_problem():
+    m, b = generate_line()
+    correct_eq = line_to_str(m, b)
+
+    wrong_lines = []
+    while len(wrong_lines) < 3:
+        m2, b2 = generate_line()
+        if (m2, b2) != (m, b):
+            wrong_lines.append((m2, b2))
+
+    lines = [(m, b)] + wrong_lines
+    random.shuffle(lines)
+
+    correct_index = lines.index((m, b))
+
+    return lines, correct_index, correct_eq
+
+# -------------------------
+# セッション初期化
+# -------------------------
+if "problem" not in st.session_state:
+    st.session_state.problem = generate_problem()
+
+if "correct_count" not in st.session_state:
+    st.session_state.correct_count = 0
+
+if "total_count" not in st.session_state:
+    st.session_state.total_count = 0
+
+if "start_time" not in st.session_state:
+    st.session_state.start_time = time.time()
+
+# -------------------------
+# 現在の問題
+# -------------------------
+lines, correct_index, correct_eq = st.session_state.problem
+
+# 色リスト（番号と一致）
+color_names = ["赤", "青", "緑", "橙"]
+color_css = ["red", "blue", "green", "orange"]
+
+# -------------------------
+# グラフ描画
+# -------------------------
+fig, ax = plt.subplots(figsize=(6, 6))
+xs = np.linspace(-10, 10, 200)
+
+for i, (m, b) in enumerate(lines):
+    ys = [float(m) * x + float(b) for x in xs]
+    ax.plot(xs, ys, label=f"{i+1}番の直線", color=color_css[i])
+
+# 軸を矢印にする
+ax.annotate("", xy=(10,0), xytext=(-10,0), arrowprops=dict(arrowstyle="->"))
+ax.annotate("", xy=(0,10), xytext=(0,-10), arrowprops=dict(arrowstyle="->"))
+
+# 余計な枠を消す
+for spine in ["left", "bottom", "right", "top"]:
+    ax.spines[spine].set_visible(False)
+
+ax.set_xlim(-10, 10)
+ax.set_ylim(-10, 10)
+ax.grid(True)
+
+# -------------------------
+# レイアウト（2カラム）
+# -------------------------
+col1, col2 = st.columns([3, 1])
+
+with col1:
+    st.pyplot(fig)
+
+with col2:
+    st.markdown(f"### 次の一次関数に対応する直線を選びなさい：{correct_eq}")
+
+    options = [
+        f"<span style='color:{color_css[i]}; font-size:20px;'>● {i+1}番（{color_names[i]}）</span>"
+        for i in range(4)
+    ]
+
+    selected = st.radio(
+        "選択肢",
+        options,
+        index=None,
+        format_func=lambda x: x,
+        key=f"radio_{st.session_state.total_count}"  # ← 毎回リセット
+    )
+
+# -------------------------
+# 答え合わせ
+# -------------------------
+if st.button("答え合わせ"):
+    if selected is None:
+        st.warning("選択肢を選んでください")
+    else:
+        st.session_state.total_count += 1
+
+        selected_index = options.index(selected)
+        is_correct = (selected_index == correct_index)
+
+        if is_correct:
+            st.success("正解です！")
+            st.session_state.correct_count += 1
+        else:
+            st.error(f"不正解… 正解は **{correct_index+1}番の直線** です")
+
+        accuracy = st.session_state.correct_count / st.session_state.total_count * 100
+        st.write(f"### 正解数：{st.session_state.correct_count}")
+        st.write(f"### 問題数：{st.session_state.total_count}")
+        st.write(f"### 正答率：{accuracy:.1f}%")
+
+        # -------------------------
+        # Google Sheets に履歴を送信
+        # -------------------------
+        sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            correct_eq.replace("$", ""),
+            correct_index + 1,
+            selected_index + 1,
+            "正解" if is_correct else "不正解"
+        ])
+
+# -------------------------
+# 次の問題（スクロールを上に戻す）
+# -------------------------
+scroll_js = "<script>window.scrollTo(0, 0);</script>"
+
+if st.button("次の問題"):
+    st.session_state.problem = generate_problem()
+    st.markdown(scroll_js, unsafe_allow_html=True)
+    st.rerun()
+
+# -------------------------
+# 終了
+# -------------------------
+if st.button("終了"):
+    end_time = time.time()
+    elapsed = end_time - st.session_state.start_time
+    minutes = int(elapsed // 60)
+    seconds = int(elapsed % 60)
+
+    accuracy = (
+        st.session_state.correct_count / st.session_state.total_count * 100
+        if st.session_state.total_count > 0 else 0
+    )
+
+    st.write("## 📘 学習を終了しました。お疲れさまでした。")
+    st.write(f"### ⏱ 解答時間：{minutes}分 {seconds}秒")
+    st.write(f"### 🎯 正答率：{st.session_state.correct_count} / {st.session_state.total_count}（{accuracy:.1f}%）")
+
+    st.session_state.clear()
+    st.stop()
