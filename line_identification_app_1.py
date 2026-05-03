@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 from fractions import Fraction
 import time
 import matplotlib
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
 # 日本語フォント設定（文字化け防止）
 matplotlib.rcParams['font.family'] = 'IPAexGothic'
@@ -12,6 +15,18 @@ matplotlib.rcParams['font.family'] = 'IPAexGothic'
 st.set_page_config(page_title="4本の直線から選ぶ問題", layout="wide")
 
 st.title("📐 一次関数の式に対応する直線を選びなさい")
+
+# -------------------------
+# Google Sheets 認証
+# -------------------------
+scope = ["https://www.googleapis.com/auth/spreadsheets"]
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+    st.secrets["gcp_service_account"], scope
+)
+gc = gspread.authorize(credentials)
+
+# スプレッドシートを開く（一次関数_履歴 シート）
+sheet = gc.open_by_key(st.secrets["sheets"]["sheet_id"]).worksheet("一次関数_履歴")
 
 # -------------------------
 # 傾き候補（整数 + 指定分数）
@@ -31,10 +46,9 @@ def frac_to_str(fr):
     return f"\\frac{{{fr.numerator}}}{{{fr.denominator}}}"
 
 # -------------------------
-# 一次関数を LaTeX 文字列に変換
+# 一次関数を LaTeX 文字列に変換（縦分数 × x）
 # -------------------------
 def line_to_str(m, b):
-    # 傾き
     if m == 1:
         m_str = "x"
     elif m == -1:
@@ -42,7 +56,6 @@ def line_to_str(m, b):
     else:
         m_str = f"{frac_to_str(m)}x"
 
-    # 切片
     if b == 0:
         return f"$y = {m_str}$"
     elif b > 0:
@@ -98,8 +111,9 @@ if "start_time" not in st.session_state:
 # -------------------------
 lines, correct_index, correct_eq = st.session_state.problem
 
-# 色リスト（番号と一致させる）
-colors = ["red", "blue", "green", "orange"]
+# 色リスト（番号と一致）
+color_names = ["赤", "青", "緑", "橙"]
+color_css = ["red", "blue", "green", "orange"]
 
 # -------------------------
 # グラフ描画
@@ -109,7 +123,7 @@ xs = np.linspace(-10, 10, 200)
 
 for i, (m, b) in enumerate(lines):
     ys = [float(m) * x + float(b) for x in xs]
-    ax.plot(xs, ys, label=f"{i+1}番の直線", color=colors[i])
+    ax.plot(xs, ys, label=f"{i+1}番の直線", color=color_css[i])
 
 # 軸を矢印にする
 ax.annotate("", xy=(10,0), xytext=(-10,0), arrowprops=dict(arrowstyle="->"))
@@ -134,9 +148,8 @@ with col1:
 with col2:
     st.markdown(f"### 次の一次関数に対応する直線を選びなさい：{correct_eq}")
 
-    # 色付きラベル
     options = [
-        f"<span style='color:{colors[i]}; font-size:20px;'>● {i+1}番</span>"
+        f"<span style='color:{color_css[i]}; font-size:20px;'>● {i+1}番（{color_names[i]}）</span>"
         for i in range(4)
     ]
 
@@ -145,6 +158,7 @@ with col2:
         options,
         index=None,
         format_func=lambda x: x,
+        key=f"radio_{st.session_state.total_count}"  # ← 毎回リセット
     )
 
 # -------------------------
@@ -156,16 +170,30 @@ if st.button("答え合わせ"):
     else:
         st.session_state.total_count += 1
 
-        if options.index(selected) == correct_index:
+        selected_index = options.index(selected)
+        is_correct = (selected_index == correct_index)
+
+        if is_correct:
             st.success("正解です！")
             st.session_state.correct_count += 1
         else:
-            st.error(f"ファイト… 正解は **{correct_index+1}番の直線** です")
+            st.error(f"不正解… 正解は **{correct_index+1}番の直線** です")
 
         accuracy = st.session_state.correct_count / st.session_state.total_count * 100
         st.write(f"### 正解数：{st.session_state.correct_count}")
         st.write(f"### 問題数：{st.session_state.total_count}")
         st.write(f"### 正答率：{accuracy:.1f}%")
+
+        # -------------------------
+        # Google Sheets に履歴を送信
+        # -------------------------
+        sheet.append_row([
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            correct_eq.replace("$", ""),
+            correct_index + 1,
+            selected_index + 1,
+            "正解" if is_correct else "不正解"
+        ])
 
 # -------------------------
 # 次の問題（スクロールを上に戻す）
