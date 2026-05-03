@@ -160,7 +160,7 @@ if st.button("答え合わせ"):
             st.success("正解です！")
             st.session_state.correct_count += 1
         else:
-            st.error(f"不正解… 正解は **{correct_index+1}番の直線** です")
+            st.error(f"ファイト… 正解は **{correct_index+1}番の直線** です")
 
         accuracy = st.session_state.correct_count / st.session_state.total_count * 100
         st.write(f"### 正解数：{st.session_state.correct_count}")
