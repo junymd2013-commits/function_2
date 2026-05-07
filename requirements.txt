@@ -4,4 +4,4 @@ oauth2client
 matplotlib
 numpy
 pandas
-
+sympy
